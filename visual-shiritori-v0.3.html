@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ビジュアル式ハイパーしりとり</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .title {
+            color: white;
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            animation: titleGlow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes titleGlow {
+            from { text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3), 0 0 10px rgba(255, 255, 255, 0.5); }
+            to { text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3), 0 0 20px rgba(255, 255, 255, 0.8); }
+        }
+
+        .input-container {
+            margin-bottom: 40px;
+            z-index: 1000;
+        }
+
+        input[type="text"] {
+            padding: 15px 25px;
+            font-size: 1.2em;
+            border: none;
+            border-radius: 50px;
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            width: 300px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus {
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .words-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0;
+            width: 80%;
+            max-width: 800px;
+            margin: 0 auto;
+            padding-left: 100px;
+        }
+
+        .word-group {
+            display: flex;
+            gap: 10px;
+            animation: wordAppear 0.6s ease-out;
+            position: relative;
+            margin-bottom: 5px;
+        }
+
+        .word-group.connected {
+            margin-top: -15px;
+        }
+
+        @keyframes wordAppear {
+            from {
+                opacity: 0;
+                transform: translateY(-30px) scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .letter-block {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(145deg, #ffffff, #e6e6e6);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            font-weight: bold;
+            color: #333;
+            box-shadow: 
+                5px 5px 15px rgba(0, 0, 0, 0.2),
+                -5px -5px 15px rgba(255, 255, 255, 0.7),
+                inset 1px 1px 3px rgba(255, 255, 255, 0.6);
+            position: relative;
+            animation: float 3s ease-in-out infinite;
+            transition: all 0.3s ease;
+        }
+
+        .letter-block:hover {
+            transform: scale(1.1) rotate(5deg);
+        }
+
+        .letter-block.fade-out {
+            opacity: 0.3;
+            transform: scale(0.8);
+            filter: blur(2px);
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0) rotate(0deg);
+            }
+            25% {
+                transform: translateY(-5px) rotate(1deg);
+            }
+            50% {
+                transform: translateY(0) rotate(-1deg);
+            }
+            75% {
+                transform: translateY(-3px) rotate(0.5deg);
+            }
+        }
+
+        .error-message {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 0, 0, 0.9);
+            color: white;
+            padding: 20px 40px;
+            border-radius: 20px;
+            font-size: 1.5em;
+            font-weight: bold;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            animation: errorShake 0.5s ease-out;
+            z-index: 2000;
+        }
+
+        @keyframes errorShake {
+            0%, 100% { transform: translate(-50%, -50%) rotate(0deg); }
+            25% { transform: translate(-48%, -50%) rotate(-2deg); }
+            50% { transform: translate(-52%, -50%) rotate(2deg); }
+            75% { transform: translate(-48%, -50%) rotate(-1deg); }
+        }
+
+        .captured-letters {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 15px 30px;
+            border-radius: 20px;
+            color: white;
+            font-size: 1.2em;
+            display: none;
+            z-index: 1000;
+        }
+
+        .captured-letters-title {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .captured-letter-item {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 5px 10px;
+            margin: 2px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        .instructions {
+            color: white;
+            font-size: 1.1em;
+            margin-bottom: 20px;
+            text-align: center;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <h1 class="title">ビジュアル式ハイパーしりとり</h1>
+    <p class="instructions">ひらがなで言葉を入力してエンターキーを押してください</p>
+    
+    <div class="input-container">
+        <input type="text" id="wordInput" placeholder="例: りんご" autofocus>
+    </div>
+    
+    <div class="words-container" id="wordsContainer"></div>
+    
+    <div class="captured-letters" id="capturedLetters">
+        <div class="captured-letters-title">手持ちの文字</div>
+        <div id="capturedLettersList"></div>
+    </div>
+
+    <script>
+        const wordInput = document.getElementById('wordInput');
+        const wordsContainer = document.getElementById('wordsContainer');
+        let lastChar = '';
+        let capturedLetters = [];
+
+        // 文字ブロック生成
+        function createLetterBlock(letter) {
+            const block = document.createElement('div');
+            block.className = 'letter-block';
+            block.textContent = letter;
+            
+            const hue = Math.random() * 360;
+            block.style.background = `linear-gradient(145deg, 
+                hsl(${hue}, 70%, 85%), 
+                hsl(${hue}, 70%, 75%))`;
+            
+            return block;
+        }
+
+        // エラー表示
+        function showError(message) {
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message';
+            errorDiv.textContent = message;
+            document.body.appendChild(errorDiv);
+            
+            setTimeout(() => {
+                errorDiv.remove();
+            }, 2000);
+        }
+
+        // 手持ちの文字表示を更新
+        function updateCapturedLettersDisplay() {
+            const container = document.getElementById('capturedLetters');
+            const list = document.getElementById('capturedLettersList');
+            
+            if (capturedLetters.length > 0) {
+                container.style.display = 'block';
+                list.innerHTML = capturedLetters.map(letter => 
+                    `<span class="captured-letter-item">${letter}</span>`
+                ).join('');
+            }
+        }
+
+        // 単語を追加
+        function addWord(word) {
+            const wordGroup = document.createElement('div');
+            wordGroup.className = 'word-group';
+            
+            // 2つ目以降の単語で前の単語の最後の文字を奪う
+            if (wordsContainer.children.length > 0 && lastChar) {
+                wordGroup.classList.add('connected');
+                
+                // 前の単語の最後の文字をフェードアウト
+                const prevWordGroup = wordsContainer.lastElementChild;
+                const lastBlock = prevWordGroup.lastElementChild;
+                if (lastBlock) {
+                    lastBlock.classList.add('fade-out');
+                    capturedLetters.push(lastBlock.textContent);
+                    updateCapturedLettersDisplay();
+                }
+            }
+            
+            // 文字を1つずつブロックにして追加
+            for (let i = 0; i < word.length; i++) {
+                const letterBlock = createLetterBlock(word[i]);
+                letterBlock.style.animationDelay = `${i * 0.1}s`;
+                wordGroup.appendChild(letterBlock);
+            }
+            
+            wordsContainer.appendChild(wordGroup);
+            
+            // 最後の文字を更新
+            lastChar = word[word.length - 1];
+            
+            // スクロール
+            wordGroup.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            
+            // 入力欄をクリアしてフォーカス
+            wordInput.value = '';
+            wordInput.focus();
+        }
+
+        // エンターキーで処理
+        wordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const word = wordInput.value.trim();
+                if (!word) return;
+                
+                // 最初の単語 または しりとりルールチェック
+                if (wordsContainer.children.length === 0 || word[0] === lastChar) {
+                    addWord(word);
+                } else {
+                    showError(`「${lastChar}」で始まる言葉を入力してください！`);
+                    wordInput.value = '';
+                    wordInput.focus();
+                }
+            }
+        });
+
+        // ページロード時にフォーカス
+        window.addEventListener('load', () => {
+            wordInput.focus();
+        });
+    </script>
+</body>
+</html>

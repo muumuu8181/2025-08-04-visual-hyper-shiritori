@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ビジュアル式ハイパーしりとり</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            overflow-x: auto;
+        }
+
+        .title {
+            color: white;
+            font-size: 2.5em;
+            font-weight: bold;
+            margin-bottom: 30px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+            animation: titleGlow 2s ease-in-out infinite alternate;
+        }
+
+        @keyframes titleGlow {
+            from { text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3), 0 0 10px rgba(255, 255, 255, 0.5); }
+            to { text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3), 0 0 20px rgba(255, 255, 255, 0.8); }
+        }
+
+        .input-container {
+            margin-bottom: 40px;
+        }
+
+        input[type="text"] {
+            padding: 15px 25px;
+            font-size: 1.2em;
+            border: none;
+            border-radius: 50px;
+            background: rgba(255, 255, 255, 0.9);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            width: 300px;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+
+        input[type="text"]:focus {
+            transform: scale(1.05);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .words-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            max-width: 90vw;
+            margin-top: 20px;
+        }
+
+        .word-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            animation: wordAppear 0.6s ease-out;
+        }
+
+        @keyframes wordAppear {
+            from {
+                opacity: 0;
+                transform: translateY(-30px) scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .letter-block {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(145deg, #ffffff, #e6e6e6);
+            border-radius: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+            font-weight: bold;
+            color: #333;
+            box-shadow: 
+                5px 5px 15px rgba(0, 0, 0, 0.2),
+                -5px -5px 15px rgba(255, 255, 255, 0.7),
+                inset 1px 1px 3px rgba(255, 255, 255, 0.6);
+            position: relative;
+            animation: float 3s ease-in-out infinite;
+            transition: all 0.3s ease;
+        }
+
+        .letter-block:hover {
+            transform: scale(1.1) rotate(5deg);
+            box-shadow: 
+                8px 8px 20px rgba(0, 0, 0, 0.3),
+                -8px -8px 20px rgba(255, 255, 255, 0.8),
+                inset 2px 2px 5px rgba(255, 255, 255, 0.8);
+        }
+
+        @keyframes float {
+            0%, 100% {
+                transform: translateY(0) rotate(0deg);
+            }
+            25% {
+                transform: translateY(-5px) rotate(1deg);
+            }
+            50% {
+                transform: translateY(0) rotate(-1deg);
+            }
+            75% {
+                transform: translateY(-3px) rotate(0.5deg);
+            }
+        }
+
+        .letter-block:nth-child(1) { animation-delay: 0s; }
+        .letter-block:nth-child(2) { animation-delay: 0.2s; }
+        .letter-block:nth-child(3) { animation-delay: 0.4s; }
+        .letter-block:nth-child(4) { animation-delay: 0.6s; }
+        .letter-block:nth-child(5) { animation-delay: 0.8s; }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.8), rgba(255, 255, 255, 0));
+            border-radius: 50%;
+            pointer-events: none;
+            animation: particleFloat 4s linear infinite;
+        }
+
+        @keyframes particleFloat {
+            from {
+                opacity: 0;
+                transform: translateY(0) translateX(0);
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            to {
+                opacity: 0;
+                transform: translateY(-100px) translateX(calc(var(--random-x) * 50px));
+            }
+        }
+
+        .instructions {
+            color: white;
+            font-size: 1.1em;
+            margin-bottom: 20px;
+            text-align: center;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <h1 class="title">ビジュアル式ハイパーしりとり</h1>
+    <p class="instructions">ひらがなで言葉を入力してエンターキーを押してください</p>
+    
+    <div class="input-container">
+        <input type="text" id="wordInput" placeholder="例: りんご" autofocus>
+    </div>
+    
+    <div class="words-container" id="wordsContainer"></div>
+
+    <script>
+        const wordInput = document.getElementById('wordInput');
+        const wordsContainer = document.getElementById('wordsContainer');
+
+        // パーティクル生成関数
+        function createParticle(element) {
+            const particle = document.createElement('div');
+            particle.className = 'particle';
+            particle.style.left = Math.random() * 100 + '%';
+            particle.style.top = Math.random() * 100 + '%';
+            particle.style.setProperty('--random-x', (Math.random() - 0.5) * 2);
+            particle.style.animationDelay = Math.random() * 2 + 's';
+            element.appendChild(particle);
+            
+            setTimeout(() => particle.remove(), 4000);
+        }
+
+        // 文字ブロック生成関数
+        function createLetterBlock(letter) {
+            const block = document.createElement('div');
+            block.className = 'letter-block';
+            block.textContent = letter;
+            
+            // ランダムな色相を追加
+            const hue = Math.random() * 360;
+            block.style.background = `linear-gradient(145deg, 
+                hsl(${hue}, 70%, 85%), 
+                hsl(${hue}, 70%, 75%))`;
+            
+            // パーティクルを定期的に生成
+            setInterval(() => createParticle(block), 2000);
+            
+            return block;
+        }
+
+        // 単語をブロックとして追加
+        function addWord(word) {
+            const wordGroup = document.createElement('div');
+            wordGroup.className = 'word-group';
+            
+            // 文字を1つずつブロックにして追加
+            for (let i = 0; i < word.length; i++) {
+                const letterBlock = createLetterBlock(word[i]);
+                // 各ブロックに遅延をつけてアニメーション
+                letterBlock.style.animationDelay = `${i * 0.1}s`;
+                wordGroup.appendChild(letterBlock);
+            }
+            
+            wordsContainer.appendChild(wordGroup);
+            
+            // スクロール位置を最新の単語に合わせる
+            wordGroup.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        // エンターキーで単語を追加
+        wordInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && wordInput.value.trim()) {
+                addWord(wordInput.value.trim());
+                wordInput.value = '';
+            }
+        });
+
+        // 初期パーティクル生成
+        for (let i = 0; i < 20; i++) {
+            setTimeout(() => {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.position = 'fixed';
+                particle.style.left = Math.random() * 100 + 'vw';
+                particle.style.top = Math.random() * 100 + 'vh';
+                particle.style.setProperty('--random-x', (Math.random() - 0.5) * 2);
+                document.body.appendChild(particle);
+                setTimeout(() => particle.remove(), 4000);
+            }, i * 200);
+        }
+    </script>
+</body>
+</html>
